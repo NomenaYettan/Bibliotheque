@@ -3,14 +3,14 @@ session_start();
 include "../db.php";
 if(isset($_SESSION['id'])){
     if($_SESSION['role']=="Admin"){
-        if(isset($_GET['idemprunt'])){
-            $idemprunt = mysqli_real_escape_string($conn, $_GET['idemprunt']);
-            $sql = "DELETE FROM emprunt WHERE idemprunt='$idemprunt'";
+        if(isset($_GET['id'])){
+            $id = mysqli_real_escape_string($conn, $_GET['id']);
+            $sql = "DELETE FROM utilisateur WHERE id='$id'";
             $result = mysqli_query($conn, $sql);
             if(!$result){
                 echo "error!: " . $conn->error;
             } else {
-                header("Location: view_transaction.php");
+                header("Location: manage_users.php");
                 exit();
             }
         }

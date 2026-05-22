@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Bibliotheque</title>
-    <link rel="stylesheet" href="design.css">
+    <title>Bibliothèque SALT IVORY</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 </html>

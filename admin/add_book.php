@@ -1,112 +1,112 @@
 <?php
 session_start();
-if(isset($_SESSION['id'])){
-    if($_SESSION['role']=="Admin"){      
-        if ($_SERVER["REQUEST_METHOD"] == "POST") {
-            $titre = $_POST['titre'];
-            $auteur = $_POST['auteur'];
-            $isbn = $_POST['isbn'];
-            $image = $_FILES['image']['name'];
-            $quantite = $_POST['quantite'];
-            include '../db.php';
-            $sql = "INSERT INTO livre(titre, auteur, isbn, image, quantite) VALUES ('$titre', '$auteur', '$isbn', '$image',
-             '$quantite')";
-            $result = mysqli_query($conn,$sql);
-            if (!$result) {
-                echo "Erreur : " . $conn->error;    
+if(!isset($_SESSION['id']) || $_SESSION['role'] != "Admin"){
+    header("Location: ../login.php");
+    exit();
+}
+
+$success = "";
+$error = "";
+
+include '../db.php';
+
+if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    $titre = mysqli_real_escape_string($conn, trim($_POST['titre']));
+    $auteur = mysqli_real_escape_string($conn, trim($_POST['auteur']));
+    $isbn = mysqli_real_escape_string($conn, trim($_POST['isbn']));
+    $quantite = intval($_POST['quantite']);
+    $image = basename($_FILES['image']['name']);
+
+    if($titre === '' || $auteur === '' || $isbn === '' || $quantite < 1){
+        $error = "Veuillez remplir tous les champs correctement.";
+    } elseif(!isset($_FILES['image']) || $_FILES['image']['error'] !== UPLOAD_ERR_OK) {
+        $error = "Veuillez sélectionner une image valide pour le livre.";
+    } else {
+        $upload_location = "../image/" . $image;
+        if(move_uploaded_file($_FILES['image']['tmp_name'], $upload_location)){
+            $sql = "INSERT INTO livre(titre, auteur, isbn, image, quantite) VALUES ('$titre', '$auteur', '$isbn', '$image', '$quantite')";
+            $result = mysqli_query($conn, $sql);
+            if(!$result){
+                $error = "Erreur : " . $conn->error;
+            } else {
+                $success = "Livre ajouté avec succès!";
             }
-            else {
-                $image_location = $_FILES['image']['tmp_name'];
-                $upload_location = "../image/";
-                move_uploaded_file($image_location, $upload_location.$image);
-                echo "Livre Ajouter!";
-            }
-        } 
+        } else {
+            $error = "Erreur lors de l'upload de l'image.";
+        }
     }
 } 
-else{
-    header("Location: ../login.php");
-
-}  
 ?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Bibliotheque</title>
-    <style type="text/css">
-/* ajout livre*/
-
-body{
-    font-family:arial, sans-serif;
-    background: linear-gradient(135deg,#4facfe, #00f2fe);
-    display:flex;
-    justify-content:center;
-    align-items:center;
-    height:90vh;
-}
-
-.admin_add_book{
-    background: #fff;
-    padding:30px;
-    border-radius:12px;
-    width: 350px;
-    box-shadow: 0 8px 20px rgba(0,0,0,0.2);
-}
-.admin_add_book h2 {
-    text-align:center;
-    margin-bottom:15px;
-}
-.admin_add_book input{
-    padding: 20px;
-    width: 88%;
-    margin: 5px 0;
-    border-radius: 8px; 
-    border:1px solid #4facfe;
-    outline:none;
-    transition: 0.3s;
-}
-.admin_add_book input:focus{
-    border-color:#4facfe;
-    box-shadow:0 0 5px rgba(79,172,254,0.5);
-}
-.admin_add_book button{
-    padding: 12px;
-    width: 100%;
-    background: #4facfe;
-    margin-top: 10px ;
-    border-radius: 8px; 
-    border:none;
-    font-size:16px;
-    cursor:pointer;
-    transition: 0.3s;
-    color: white;    
-}
-.admin_add_book button:hover{
-    background: #007bff;
-    transform:scale(1.03);
-}
-.file{
-    
-    padding:8px;
-    background:#f5f5f5 ;
-
-}
-    </style>
+    <title>Ajouter un livre - Admin</title>
+    <link rel="stylesheet" href="../style.css">
 </head>
 <body>
-    <div class="admin_add_book">
-        <h2>Ajouter des livres</h2> <br>
-        <form action="add_book.php" method="POST" enctype="multipart/form-data">
-            <input type="text" name="titre" placeholder="Entrer la titre du livre">
-            <input type="text" name="auteur" placeholder="Entrer l'auteur du livre">
-            <input type="text" name="isbn" placeholder="Entrer l'isbn du livre">
-            <input class="file" type="file" name="image" placeholder='Inserer la photo du livre'>
-            <input type="text" name="quantite" placeholder=" Qantité ou nombre du livre">
-            <button type="submit">Ajouter</button>
-        </form>
+    <header>
+        <h1>BIBLIOTHÈQUE SALT IVORY - ADMINISTRATION</h1>
+        <nav>
+            <a href="dashboard.php">Tableau de bord</a> | 
+            <a href="view_book.php">Voir les livres</a> | 
+            <a href="add_book.php" class="active">Ajouter un livre</a> | 
+            <a href="manage_users.php">Gérer les utilisateurs</a> | 
+            <a href="view_transaction.php">Voir les emprunts</a> | 
+            <a href="../logout.php">Déconnexion</a>
+        </nav>
+    </header>
+
+    <div class="admin-layout">
+        <div class="admin-sidebar">
+            <ul>
+                <li><a href="view_book.php">📚 Gérer les livres</a></li>
+                <li><a href="add_book.php">➕ Ajouter un livre</a></li>
+                <li><a href="manage_users.php">👥 Gérer les utilisateurs</a></li>
+                <li><a href="view_transaction.php">📋 Transactions</a></li>
+                <li><a href="../logout.php">🚪 Déconnexion</a></li>
+            </ul>
+        </div>
+
+        <div class="admin-content">
+            <h2>➕ Ajouter un Nouveau Livre</h2>
+            
+            <?php if($success): ?>
+                <div class="alert alert-success">✅ <?php echo $success; ?></div>
+                <a href="view_book.php" class="btn btn-primary">Retour à la liste</a>
+            <?php else: ?>
+                <?php if($error): ?>
+                    <div class="alert alert-error">❌ <?php echo $error; ?></div>
+                <?php endif; ?>
+
+                <form action="add_book.php" method="POST" enctype="multipart/form-data" style="max-width: 600px;">
+                    <div style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                        <label for="titre"><strong>Titre du livre *</strong></label>
+                        <input type="text" id="titre" name="titre" placeholder="Ex: Harry Potter" required>
+
+                        <label for="auteur"><strong>Auteur *</strong></label>
+                        <input type="text" id="auteur" name="auteur" placeholder="Ex: J.K. Rowling" required>
+
+                        <label for="isbn"><strong>ISBN *</strong></label>
+                        <input type="text" id="isbn" name="isbn" placeholder="Ex: 978-0-7475-3269-9" required>
+
+                        <label for="quantite"><strong>Quantité *</strong></label>
+                        <input type="number" id="quantite" name="quantite" placeholder="Nombre de copies" min="1" required>
+
+                        <label for="image"><strong>Image du livre *</strong></label>
+                        <input type="file" id="image" name="image" accept="image/*" required>
+
+                        <button type="submit" class="btn btn-primary" style="margin-top: 20px;">➕ Ajouter le livre</button>
+                        <a href="view_book.php" class="btn btn-secondary" style="margin-top: 20px;">Annuler</a>
+                    </div>
+                </form>
+            <?php endif; ?>
+        </div>
     </div>
 
+    <footer>
+        <p>&copy; 2026 Bibliothèque SALT IVORY - Tous droits réservés</p>
+    </footer>
 </body>
 </html>

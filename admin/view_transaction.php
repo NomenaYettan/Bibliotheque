@@ -1,94 +1,95 @@
 <?php
 session_start();
-include "../db.php";
-if(isset($_SESSION['id'])){
-    if($_SESSION['role']=="Admin"){
-$sql = "select * from emprunt";
-$result = mysqli_query($conn,$sql);
-if(!$result){
-    echo "error!: {$result->error}";
-}
-else{
-}
-}
-
-else{
-    header("Location: ../dashboard.php");
-}
-
-}
-else{
+if(!isset($_SESSION['id']) || $_SESSION['role'] != "Admin"){
     header("Location: ../login.php");
+    exit();
 }
 
+include "../db.php";
+$sql = "select e.idemprunt, e.id, u.nom_utilisateur, e.idlivre, l.titre, e.dateemprunt, e.dateretour, e.status 
+        from emprunt e 
+        join utilisateur u on e.id = u.id 
+        join livre l on e.idlivre = l.idlivre 
+        order by e.dateemprunt DESC";
+$result = mysqli_query($conn, $sql);
 ?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bibliotheque</title>
-    <style type="text/css">
-        table{
-            border: none;
-            width:100%;
-        }
-        tr,th{
-            border-bottom: 10px solid green;
-        }
-        td{
-            text-align:center;
-            border:none;
-            background-color: gray;
-            
-        }
-        .update{
-            text-decoration: none;
-        }
-        .delete{
-            text-decoration: none;
-        }
-        
-    
-    </style>
+    <title>Transactions - Admin</title>
+    <link rel="stylesheet" href="../style.css">
 </head>
 <body>
-    <table>
-        <thead>
-            <tr>
-                <th>id_emprunt</th>
-                <th>id_Utilisateur</th>
-                <th>Nom d'utilisateur</th>
-                <th>id_livre</th>
-                <th>Titre du livre</th>
-                <th>Date d'emprunt</th>
-                <th>Date de retour prevue</th>
-                <th>Etat du livre</th>
-                <th>Action</th>
-                <th>Action</th>
-            </tr>
-        </thead>
-        <tbody>
-            <?php 
-            while($row = mysqli_fetch_assoc($result)){
-            ?>
-            <tr>
-                <td><?php echo "{$row['idemprunt']}" ?></td>
-                <td><?php echo "{$row['id']}" ?></td>
-                <td><?php echo "{$row['nom_utilisateur']}" ?></td>
-                <td><?php echo "{$row['idlivre']}" ?></td>
-                <td><?php echo "{$row['titre']}" ?></td>
-                <td> <?php echo "{$row['dateemprunt']}" ?></td>
-                <td><?php echo "{$row['dateretour']}" ?></td>
-                <td> <?php echo "{$row['etat']}" ?> </td>
-                <td><a class="update" href="update_transaction.php?idemprunt=<?php echo $row['id'];?>">Update</a></td>
-                <td><a class="delete" href="delete_transaction.php?idemprunt=<?php echo $row['id'];?>">Supprimer</a></td>
-            </tr>
-            <?php
-            }
-            ?>
-        </tbody>
+    <header>
+        <h1>BIBLIOTHÈQUE SALT IVORY - ADMINISTRATION</h1>
+        <nav>
+            <a href="dashboard.php">Tableau de bord</a> | 
+            <a href="view_book.php">Voir les livres</a> | 
+            <a href="add_book.php">Ajouter un livre</a> | 
+            <a href="manage_users.php">Gérer les utilisateurs</a> | 
+            <a href="view_transaction.php" class="active">Voir les emprunts</a> | 
+            <a href="../logout.php">Déconnexion</a>
+        </nav>
+    </header>
 
-    </table>
+    <div class="admin-layout">
+        <div class="admin-sidebar">
+            <ul>
+                <li><a href="view_book.php">📚 Gérer les livres</a></li>
+                <li><a href="add_book.php">➕ Ajouter un livre</a></li>
+                <li><a href="manage_users.php">👥 Gérer les utilisateurs</a></li>
+                <li><a href="view_transaction.php">📋 Transactions</a></li>
+                <li><a href="../logout.php">🚪 Déconnexion</a></li>
+            </ul>
+        </div>
+
+        <div class="admin-content">
+            <h2>📋 Historique des Transactions</h2>
+
+            <?php if($result && $result->num_rows > 0): ?>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID Emprunt</th>
+                            <th>Utilisateur</th>
+                            <th>Livre</th>
+                            <th>Date d'emprunt</th>
+                            <th>Date de retour</th>
+                            <th>Statut</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php while($row = mysqli_fetch_assoc($result)): ?>
+                        <tr>
+                            <td><?php echo $row['idemprunt']; ?></td>
+                            <td><?php echo htmlspecialchars($row['nom_utilisateur']); ?></td>
+                            <td><?php echo htmlspecialchars($row['titre']); ?></td>
+                            <td><?php echo date('d/m/Y', strtotime($row['dateemprunt'])); ?></td>
+                            <td><?php echo ($row['dateretour'] ? date('d/m/Y', strtotime($row['dateretour'])) : '-'); ?></td>
+                            <td>
+                                <span style="padding: 4px 8px; border-radius: 4px; font-weight: bold;
+                                    <?php echo ($row['status'] == 'emprunté' ? 'background-color: #f39c12; color: white;' : 'background-color: #27ae60; color: white;'); ?>">
+                                    <?php echo ucfirst($row['status']); ?>
+                                </span>
+                            </td>
+                            <td>
+                                <a href="update_transaction.php?idemprunt=<?php echo $row['idemprunt']; ?>" class="btn btn-warning" style="padding: 6px 12px; font-size: 12px;">✏️ Modifier</a>
+                            </td>
+                        </tr>
+                        <?php endwhile; ?>
+                    </tbody>
+                </table>
+            <?php else: ?>
+                <div class="alert alert-info">Aucune transaction trouvée.</div>
+            <?php endif; ?>
+        </div>
+    </div>
+
+    <footer>
+        <p>&copy; 2026 Bibliothèque SALT IVORY - Tous droits réservés</p>
+    </footer>
 </body>
 </html>

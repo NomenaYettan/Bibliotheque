@@ -7,8 +7,9 @@ $user = "root";
 $pass = "";
 $dbname = "bibliotheque";
 $conn = new mysqli($server, $user, $pass, $dbname);
-if(!$conn){
-    echo "oopps! : {$conn->connect_error}";
+if($conn->connect_errno){
+    die("Erreur de connexion à la base de données : " . $conn->connect_error);
 }
+$conn->set_charset("utf8mb4");
 
 ?>
