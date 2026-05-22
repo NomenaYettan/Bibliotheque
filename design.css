@@ -1,0 +1,51 @@
+
+body{
+    font-family:arial, sans-serif;
+    background: linear-gradient(135deg,#4facfe, #00f2fe);
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    height:90vh;
+}
+.registre h2 {
+    text-align:center;
+    margin-bottom:15px;
+}
+.registre{
+    align-items: center;
+    background: #fff;
+    padding:30px;
+    border-radius:12px;
+    width: 350px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+}
+.registre input{
+    padding: 20px;
+    width: 90%;
+    margin: 5px 0;
+    border-radius: 8px; 
+    border:1px solid #4facfe;
+    outline:none;
+    transition: 0.3s;
+}
+.registre input:focus{
+    border-color:#4facfe;
+    box-shadow:0 0 5px rgba(79,172,254,0.5);
+}
+.registre button{
+    padding: 12px;
+    width: 100%;
+    background: #4facfe;
+    margin-top: 10px ;
+    border-radius: 8px; 
+    border:none;
+    font-size:16px;
+    cursor:pointer;
+    transition: 0.3s;
+    color: white;      
+
+}
+.registre button:hover{
+    background: #007bff;
+    transform:scale(1.03);
+}
