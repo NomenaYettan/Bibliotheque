@@ -71,7 +71,11 @@ if(!$result){
                                     </p>
                                 <?php endif; ?>
                             <?php endif; ?>
-                            <a href="return.php?idlivre=<?php echo $row['idlivre']; ?>" class="btn btn-warning">↩️ Retourner</a>
+                            <?php if(isset($_SESSION['role']) && $_SESSION['role'] === 'Admin'): ?>
+                                <a href="return.php?idlivre=<?php echo $row['idlivre']; ?>" class="btn btn-warning">↩️ Retourner</a>
+                            <?php else: ?>
+                                <span style="color: #7f8c8d; font-size: 13px;">Retour uniquement via l'administrateur</span>
+                            <?php endif; ?>
                         <?php else: ?>
                             <a href="login.php" class="btn btn-primary">Se connecter pour emprunter</a>
                         <?php endif; ?>

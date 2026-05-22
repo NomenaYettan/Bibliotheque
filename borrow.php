@@ -26,15 +26,18 @@ if(isset($_GET['idlivre'])){
     if($result_check && $result_check->num_rows > 0){
         $book = mysqli_fetch_assoc($result_check);
         if($book['quantite'] > 0){
-            // Insérer l'emprunt
-            $sql = "INSERT INTO emprunt (id, idlivre, dateemprunt, status) VALUES ('$user_id','$idlivre',CURDATE(),'emprunté')";
+            // Calculer la date de retour prévue (10 jours après la date d'emprunt)
+            $expectedReturn = date('Y-m-d', strtotime('+10 days'));
+
+            // Insérer l'emprunt avec la date de retour prévue
+            $sql = "INSERT INTO emprunt (id, idlivre, dateemprunt, dateretour, status) VALUES ('$user_id','$idlivre',CURDATE(),'$expectedReturn','emprunté')";
             $result = mysqli_query($conn, $sql);
             
             if($result){
                 // Diminuer la quantité du livre
                 $sql2 = "UPDATE livre SET quantite = quantite-1 WHERE idlivre = '$idlivre'";
                 $result2 = mysqli_query($conn, $sql2);
-                $success = "Livre emprunté avec succès!";
+                $success = "Livre emprunté avec succès! Date de retour prévue : " . date('d/m/Y', strtotime($expectedReturn));
             }
             else{
                 $error = "Erreur lors de l'emprunt: " . $conn->error;

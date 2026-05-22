@@ -10,30 +10,13 @@ if(!isset($_SESSION['id'])){
 $error = "";
 $success = "";
 
+// Désactivation du retour direct par les utilisateurs : seul l'Admin peut marquer un emprunt comme retourné
 if($_GET && isset($_GET['idlivre'])){
-    $idlivre = $_GET['idlivre'];
-    $user_id = $_SESSION['id'];
-    
-    // Vérifier que l'emprunt existe et appartient à l'utilisateur
-    $sql_check = "SELECT * FROM emprunt WHERE id='$user_id' AND idlivre='$idlivre' AND status='emprunté'";
-    $result_check = mysqli_query($conn, $sql_check);
-    
-    if($result_check && $result_check->num_rows > 0){
-        // Mettre à jour le statut de l'emprunt
-        $sql_update = "UPDATE emprunt SET status='retourné', dateretour=CURDATE() WHERE id='$user_id' AND idlivre='$idlivre'";
-        $result_update = mysqli_query($conn, $sql_update);
-        
-        if($result_update){
-            // Augmenter la quantité du livre
-            $sql_qty = "UPDATE livre SET quantite=quantite+1 WHERE idlivre='$idlivre'";
-            $result_qty = mysqli_query($conn, $sql_qty);
-            
-            $success = "Livre retourné avec succès!";
-        } else {
-            $error = "Erreur lors de la mise à jour du retour.";
-        }
+    if(!isset($_SESSION['role']) || $_SESSION['role'] !== "Admin"){
+        $error = "Action non autorisée : seul l'administrateur peut marquer un livre comme retourné.";
     } else {
-        $error = "Cet emprunt n'existe pas ou n'a pas pu être trouvé.";
+        // Pour les administrateurs, la gestion des retours doit se faire via le panneau d'administration
+        $error = "Utilisez le panneau d'administration pour marquer un emprunt comme retourné.";
     }
 }
 
@@ -85,7 +68,11 @@ $result = mysqli_query($conn, $sql);
                         <p><strong>Emprunté le:</strong> <?php echo date('d/m/Y', strtotime($row['dateemprunt'])); ?></p>
                         <p><strong>Statut:</strong> <span style="color: #27ae60; font-weight: bold;">En cours</span></p>
                         <div class="book-actions">
-                            <a href="return.php?idlivre=<?php echo $row['idlivre']; ?>" class="btn btn-danger" onclick="return confirm('Confirmer le retour de ce livre?');">↩️ Retourner ce livre</a>
+                            <?php if(isset($_SESSION['role']) && $_SESSION['role'] === 'Admin'): ?>
+                                <a href="return.php?idlivre=<?php echo $row['idlivre']; ?>" class="btn btn-danger" onclick="return confirm('Confirmer le retour de ce livre?');">↩️ Retourner ce livre</a>
+                            <?php else: ?>
+                                <span style="color: #7f8c8d;">En attente de retour (contacter l'administrateur)</span>
+                            <?php endif; ?>
                         </div>
                     </div>
                 <?php endwhile; ?>

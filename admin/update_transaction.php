@@ -20,11 +20,13 @@ if(!isset($_GET['idemprunt'])){
 $idemprunt = mysqli_real_escape_string($conn, $_GET['idemprunt']);
 $error = "";
 $success = "";
+$submittedStatus = '';
+$submittedDate = '';
 
-$sql = "SELECT e.*, u.nom_utilisateur, l.titre, l.quantite FROM emprunt e \
-        JOIN utilisateur u ON e.id = u.id \
-        JOIN livre l ON e.idlivre = l.idlivre \
-        WHERE e.idemprunt = '$idemprunt'";
+$sql = "SELECT e.*, u.nom_utilisateur, l.titre, l.quantite FROM emprunt e " .
+       "JOIN utilisateur u ON e.id = u.id " .
+       "JOIN livre l ON e.idlivre = l.idlivre " .
+       "WHERE e.idemprunt = '$idemprunt'";
 $result = mysqli_query($conn, $sql);
 
 if(!$result || $result->num_rows === 0){
@@ -33,10 +35,18 @@ if(!$result || $result->num_rows === 0){
 }
 
 $transaction = mysqli_fetch_assoc($result);
+$submittedStatus = $transaction['status'];
+$submittedDate = $transaction['dateretour'];
 
 if($_SERVER['REQUEST_METHOD'] === 'POST'){
-    $status = $_POST['status'] === 'retourné' ? 'retourné' : 'emprunté';
-    $dateretour = trim($_POST['dateretour']);
+    $submittedStatus = isset($_POST['status']) ? trim($_POST['status']) : '';
+    $submittedDate = isset($_POST['dateretour']) ? trim($_POST['dateretour']) : '';
+    $status = $submittedStatus === 'retourné' ? 'retourné' : 'emprunté';
+    $dateretour = mysqli_real_escape_string($conn, $submittedDate);
+
+    if($status === 'retourné' && $dateretour === ''){
+        $dateretour = date('Y-m-d');
+    }
 
     if($status === 'retourné' && $dateretour === ''){
         $error = "Veuillez indiquer la date de retour.";
@@ -119,12 +129,12 @@ if($_SERVER['REQUEST_METHOD'] === 'POST'){
 
                     <label for="status"><strong>Statut</strong></label>
                     <select id="status" name="status" required>
-                        <option value="emprunté" <?php echo ($transaction['status']==='emprunté' ? 'selected' : ''); ?>>Emprunté</option>
-                        <option value="retourné" <?php echo ($transaction['status']==='retourné' ? 'selected' : ''); ?>>Retourné</option>
+                        <option value="emprunté" <?php echo ($submittedStatus==='emprunté' ? 'selected' : ''); ?>>Emprunté</option>
+                        <option value="retourné" <?php echo ($submittedStatus==='retourné' ? 'selected' : ''); ?>>Retourné</option>
                     </select>
 
                     <label for="dateretour"><strong>Date de retour</strong></label>
-                    <input type="date" id="dateretour" name="dateretour" value="<?php echo ($transaction['dateretour'] ? date('Y-m-d', strtotime($transaction['dateretour'])) : ''); ?>">
+                    <input type="date" id="dateretour" name="dateretour" value="<?php echo ($submittedDate ? date('Y-m-d', strtotime($submittedDate)) : ''); ?>">
 
                     <button type="submit" class="btn btn-primary" style="margin-top: 20px;">Mettre à jour</button>
                     <a href="view_transaction.php" class="btn btn-secondary" style="margin-top: 20px;">Annuler</a>
