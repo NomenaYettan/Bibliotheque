@@ -9,6 +9,14 @@ if($_SESSION['role'] != "Admin"){
     header("Location: ../dashboard.php");
     exit();
 }
+
+include "../db.php";
+$pendingCount = 0;
+$pendingResult = mysqli_query($conn, "SELECT COUNT(*) as total FROM emprunt WHERE status='en attente'");
+if($pendingResult){
+    $pendingRow = mysqli_fetch_assoc($pendingResult);
+    $pendingCount = $pendingRow['total'];
+}
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -26,6 +34,7 @@ if($_SESSION['role'] != "Admin"){
             <a href="view_book.php">Voir les livres</a> | 
             <a href="add_book.php">Ajouter un livre</a> | 
             <a href="manage_users.php">Gérer les utilisateurs</a> | 
+            <a href="requests.php">Demandes d'emprunt</a> | 
             <a href="view_transaction.php">Voir les emprunts</a> | 
             <a href="../logout.php">Déconnexion</a>
         </nav>
@@ -37,11 +46,9 @@ if($_SESSION['role'] != "Admin"){
                 <li><a href="view_book.php">📚 Gérer les livres</a></li>
                 <li><a href="add_book.php">➕ Ajouter un livre</a></li>
                 <li><a href="manage_users.php">👥 Gérer les utilisateurs</a></li>
-                <li><a href="view_transaction.php">📋 Transactions</a></li>
-                <li><a href="../logout.php">🚪 Déconnexion</a></li>
+                <li><a href="requests.php">🕒 Demandes d'emprunt</a></li>
             </ul>
         </div>
-
         <div class="admin-content">
             <h2>📊 Tableau de Bord Administrateur</h2>
             
@@ -63,8 +70,12 @@ if($_SESSION['role'] != "Admin"){
 
                 <div style="background: white; padding: 20px; border-radius: 8px; border-left: 4px solid #f39c12; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
                     <h3>📋 Transactions</h3>
-                    <p style="color: #7f8c8d; margin: 10px 0;">Suivi des emprunts et retours de livres</p>
-                    <a href="view_transaction.php" class="btn btn-primary" style="width: 100%; margin-top: 15px;">Voir les transactions</a>
+                    <p style="color: #7f8c8d; margin: 10px 0;">Suivi des emprunts, retours et demandes</p>
+                    <p style="margin: 5px 0; font-weight: bold; color: #c0392b;">Demandes en attente : <?php echo (int)$pendingCount; ?></p>
+                    <div style="display: flex; gap: 10px; margin-top: 15px;">
+                        <a href="view_transaction.php" class="btn btn-primary" style="flex: 1;">Voir les transactions</a>
+                        <a href="requests.php" class="btn btn-success" style="flex: 1;">Voir les demandes</a>
+                    </div>
                 </div>
             </div>
         </div>

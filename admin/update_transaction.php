@@ -41,23 +41,23 @@ $submittedDate = $transaction['dateretour'];
 if($_SERVER['REQUEST_METHOD'] === 'POST'){
     $submittedStatus = isset($_POST['status']) ? trim($_POST['status']) : '';
     $submittedDate = isset($_POST['dateretour']) ? trim($_POST['dateretour']) : '';
-    $status = $submittedStatus === 'retourné' ? 'retourné' : 'emprunté';
+    $status = $submittedStatus === 'rendu' ? 'rendu' : 'emprunté';
     $dateretour = mysqli_real_escape_string($conn, $submittedDate);
 
-    if($status === 'retourné' && $dateretour === ''){
+    if($status === 'rendu' && $dateretour === ''){
         $dateretour = date('Y-m-d');
     }
 
-    if($status === 'retourné' && $dateretour === ''){
+    if($status === 'rendu' && $dateretour === ''){
         $error = "Veuillez indiquer la date de retour.";
     } else {
         $currentStatus = $transaction['status'];
         $bookId = $transaction['idlivre'];
 
         if($currentStatus !== $status){
-            if($currentStatus === 'emprunté' && $status === 'retourné'){
+            if($currentStatus === 'emprunté' && $status === 'rendu'){
                 mysqli_query($conn, "UPDATE livre SET quantite = quantite + 1 WHERE idlivre='$bookId'");
-            } elseif($currentStatus === 'retourné' && $status === 'emprunté'){
+            } elseif($currentStatus === 'rendu' && $status === 'emprunté'){
                 $stockCheck = mysqli_query($conn, "SELECT quantite FROM livre WHERE idlivre='$bookId'");
                 $book = mysqli_fetch_assoc($stockCheck);
                 if($book['quantite'] < 1){
@@ -69,7 +69,7 @@ if($_SERVER['REQUEST_METHOD'] === 'POST'){
         }
 
         if(!$error){
-            $dateretourValue = $status === 'retourné' ? "'$dateretour'" : "NULL";
+            $dateretourValue = $status === 'rendu' ? "'$dateretour'" : "NULL";
             $sqlUpdate = "UPDATE emprunt SET status='$status', dateretour=$dateretourValue WHERE idemprunt='$idemprunt'";
             $updateResult = mysqli_query($conn, $sqlUpdate);
             if($updateResult){
@@ -130,14 +130,21 @@ if($_SERVER['REQUEST_METHOD'] === 'POST'){
                     <label for="status"><strong>Statut</strong></label>
                     <select id="status" name="status" required>
                         <option value="emprunté" <?php echo ($submittedStatus==='emprunté' ? 'selected' : ''); ?>>Emprunté</option>
-                        <option value="retourné" <?php echo ($submittedStatus==='retourné' ? 'selected' : ''); ?>>Retourné</option>
+                        <option value="rendu" <?php echo ($submittedStatus==='rendu' ? 'selected' : ''); ?>>Rendu</option>
                     </select>
 
                     <label for="dateretour"><strong>Date de retour</strong></label>
                     <input type="date" id="dateretour" name="dateretour" value="<?php echo ($submittedDate ? date('Y-m-d', strtotime($submittedDate)) : ''); ?>">
 
-                    <button type="submit" class="btn btn-primary" style="margin-top: 20px;">Mettre à jour</button>
-                    <a href="view_transaction.php" class="btn btn-secondary" style="margin-top: 20px;">Annuler</a>
+                    <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px;">
+                        <button type="submit" class="btn btn-primary">Mettre à jour</button>
+                        <a href="view_transaction.php" class="btn btn-secondary">Annuler</a>
+                        <?php if($transaction['status'] === 'emprunté'): ?>
+                            <button type="button" class="btn btn-danger" disabled style="opacity: 0.65; cursor: not-allowed;">Supprimer la transaction</button>
+                        <?php else: ?>
+                            <a href="delete_transaction.php?idemprunt=<?php echo urlencode($idemprunt); ?>" class="btn btn-danger" onclick="return confirm('Êtes-vous sûr de vouloir supprimer cette transaction ? Cette action est définitive.');">Supprimer la transaction</a>
+                        <?php endif; ?>
+                    </div>
                 </div>
             </form>
         </div>

@@ -15,6 +15,7 @@ if($_SERVER['REQUEST_METHOD'] == "POST"){
         if($result && $result->num_rows > 0){
             $row = mysqli_fetch_assoc($result);
             if($row['password'] === $password){
+                session_regenerate_id(true);
                 $_SESSION['id'] = $row['id'];
                 $_SESSION['role'] = $row['role'];
                 if($row['role'] === "Admin"){

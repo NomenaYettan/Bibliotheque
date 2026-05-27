@@ -2,13 +2,8 @@
 session_start();
 include "db.php";
 
-if(!isset($_SESSION['id'])){
+if(!isset($_SESSION['id']) || !isset($_SESSION['role']) || $_SESSION['role'] !== "User"){
     header("Location: login.php");
-    exit();
-}
-
-if($_SESSION['role'] != "User"){
-    header("Location: admin/dashboard.php");
     exit();
 }
 
@@ -26,21 +21,26 @@ if(isset($_GET['idlivre'])){
     if($result_check && $result_check->num_rows > 0){
         $book = mysqli_fetch_assoc($result_check);
         if($book['quantite'] > 0){
-            // Calculer la date de retour prévue (10 jours après la date d'emprunt)
-            $expectedReturn = date('Y-m-d', strtotime('+10 days'));
+            // Vérifier le nombre de demandes et d'emprunts déjà en cours pour ce livre
+            $sql_pending = "SELECT COUNT(*) as total FROM emprunt WHERE idlivre='$idlivre' AND status IN ('emprunté','en attente')";
+            $result_pending = mysqli_query($conn, $sql_pending);
+            $pending = mysqli_fetch_assoc($result_pending);
 
-            // Insérer l'emprunt avec la date de retour prévue
-            $sql = "INSERT INTO emprunt (id, idlivre, dateemprunt, dateretour, status) VALUES ('$user_id','$idlivre',CURDATE(),'$expectedReturn','emprunté')";
-            $result = mysqli_query($conn, $sql);
-            
-            if($result){
-                // Diminuer la quantité du livre
-                $sql2 = "UPDATE livre SET quantite = quantite-1 WHERE idlivre = '$idlivre'";
-                $result2 = mysqli_query($conn, $sql2);
-                $success = "Livre emprunté avec succès! Date de retour prévue : " . date('d/m/Y', strtotime($expectedReturn));
-            }
-            else{
-                $error = "Erreur lors de l'emprunt: " . $conn->error;
+            if($pending['total'] >= $book['quantite']){
+                $error = "Toutes les copies de ce livre sont déjà empruntées ou en attente d'approbation.";
+            } else {
+                // Calculer la date de retour prévue (10 jours après la date de demande)
+                $expectedReturn = date('Y-m-d', strtotime('+10 days'));
+
+                // Insérer la demande sans modifier la quantité du livre
+                $sql = "INSERT INTO emprunt (id, idlivre, dateemprunt, dateretour, status) VALUES ('$user_id','$idlivre',CURDATE(),'$expectedReturn','en attente')";
+                $result = mysqli_query($conn, $sql);
+
+                if($result){
+                    $success = "Demande d'emprunt envoyée. L'administrateur doit encore la confirmer.";
+                } else {
+                    $error = "Erreur lors de la demande d'emprunt: " . $conn->error;
+                }
             }
         }
         else{

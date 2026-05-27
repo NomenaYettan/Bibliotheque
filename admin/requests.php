@@ -6,11 +6,12 @@ if(!isset($_SESSION['id']) || $_SESSION['role'] != "Admin"){
 }
 
 include "../db.php";
-$sql = "select e.idemprunt, e.id, u.nom_utilisateur, e.idlivre, l.titre, e.dateemprunt, e.dateretour, e.status 
-        from emprunt e 
-        join utilisateur u on e.id = u.id 
-        join livre l on e.idlivre = l.idlivre 
-        order by e.dateemprunt DESC";
+$sql = "SELECT e.idemprunt, e.id, u.nom_utilisateur, e.idlivre, l.titre, e.dateemprunt, e.dateretour, e.status
+        FROM emprunt e
+        JOIN utilisateur u ON e.id = u.id
+        JOIN livre l ON e.idlivre = l.idlivre
+        WHERE e.status = 'en attente'
+        ORDER BY e.dateemprunt DESC";
 $result = mysqli_query($conn, $sql);
 ?>
 <!DOCTYPE html>
@@ -18,7 +19,7 @@ $result = mysqli_query($conn, $sql);
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Transactions - Admin</title>
+    <title>Demandes d'emprunt - Admin</title>
     <link rel="stylesheet" href="../style.css">
 </head>
 <body>
@@ -29,7 +30,8 @@ $result = mysqli_query($conn, $sql);
             <a href="view_book.php">Voir les livres</a> | 
             <a href="add_book.php">Ajouter un livre</a> | 
             <a href="manage_users.php">Gérer les utilisateurs</a> | 
-            <a href="view_transaction.php" class="active">Voir les emprunts</a> | 
+            <a href="requests.php" class="active">Demandes d'emprunt</a> | 
+            <a href="view_transaction.php">Voir les emprunts</a> | 
             <a href="../logout.php">Déconnexion</a>
         </nav>
     </header>
@@ -47,18 +49,17 @@ $result = mysqli_query($conn, $sql);
         </div>
 
         <div class="admin-content">
-            <h2>📋 Historique des Transactions</h2>
+            <h2>🕒 Demandes d'emprunt en attente</h2>
 
             <?php if($result && $result->num_rows > 0): ?>
                 <table>
                     <thead>
                         <tr>
-                            <th>ID Emprunt</th>
+                            <th>ID Demande</th>
                             <th>Utilisateur</th>
                             <th>Livre</th>
-                            <th>Date d'emprunt</th>
-                            <th>Date de retour</th>
-                            <th>Statut</th>
+                            <th>Date de demande</th>
+                            <th>Date de retour prévue</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -70,21 +71,16 @@ $result = mysqli_query($conn, $sql);
                             <td><?php echo htmlspecialchars($row['titre']); ?></td>
                             <td><?php echo date('d/m/Y', strtotime($row['dateemprunt'])); ?></td>
                             <td><?php echo ($row['dateretour'] ? date('d/m/Y', strtotime($row['dateretour'])) : '-'); ?></td>
-                            <td>
-                                <span style="padding: 4px 8px; border-radius: 4px; font-weight: bold;
-                                    <?php echo ($row['status'] == 'emprunté' ? 'background-color: #f39c12; color: white;' : 'background-color: #27ae60; color: white;'); ?>">
-                                    <?php echo ucfirst($row['status']); ?>
-                                </span>
-                            </td>
-                            <td>
-                                <a href="update_transaction.php?idemprunt=<?php echo $row['idemprunt']; ?>" class="btn btn-warning" style="padding: 6px 12px; font-size: 12px;">✏️ Modifier</a>
+                            <td style="display: flex; gap: 8px; flex-wrap: wrap;">
+                                <a href="handle_request.php?idemprunt=<?php echo $row['idemprunt']; ?>&action=approve" class="btn btn-success" style="padding: 6px 12px; font-size: 12px;" onclick="return confirm('Valider cette demande d\'emprunt ?');">✔️ Valider</a>
+                                <a href="handle_request.php?idemprunt=<?php echo $row['idemprunt']; ?>&action=deny" class="btn btn-danger" style="padding: 6px 12px; font-size: 12px;" onclick="return confirm('Refuser cette demande d\'emprunt ?');">✖️ Refuser</a>
                             </td>
                         </tr>
                         <?php endwhile; ?>
                     </tbody>
                 </table>
             <?php else: ?>
-                <div class="alert alert-info">Aucune transaction trouvée.</div>
+                <div class="alert alert-info">Aucune demande d'emprunt en attente.</div>
             <?php endif; ?>
         </div>
     </div>

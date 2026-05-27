@@ -6,6 +6,33 @@ if(!isset($_SESSION['id']) || $_SESSION['role'] != "Admin"){
 }
 
 include "../db.php";
+$success = "";
+$error = "";
+
+if($_SERVER['REQUEST_METHOD'] == "POST" && isset($_POST['action']) && $_POST['action'] === 'add_user'){
+    $nom = mysqli_real_escape_string($conn, trim($_POST['nom']));
+    $email = mysqli_real_escape_string($conn, trim($_POST['email']));
+    $password = trim($_POST['password']);
+    $role = isset($_POST['role']) && $_POST['role'] === 'Admin' ? 'Admin' : 'User';
+
+    if($nom === '' || $email === '' || $password === ''){
+        $error = "Veuillez remplir tous les champs.";
+    } else {
+        $check = mysqli_query($conn, "SELECT id FROM utilisateur WHERE email='$email'");
+        if($check && $check->num_rows > 0){
+            $error = "Un compte avec cet email existe déjà.";
+        } else {
+            $sql_insert = "INSERT INTO utilisateur(nom_utilisateur, email, password, role) VALUES ('$nom','$email','$password','$role')";
+            $result_insert = mysqli_query($conn, $sql_insert);
+            if(!$result_insert){
+                $error = "Erreur : " . $conn->error;
+            } else {
+                $success = "Le compte a été créé avec succès.";
+            }
+        }
+    }
+}
+
 $sql = "select id, nom_utilisateur, email, role from utilisateur where role != 'Admin'";
 $result = mysqli_query($conn, $sql);
 ?>
@@ -43,6 +70,28 @@ $result = mysqli_query($conn, $sql);
 
         <div class="admin-content">
             <h2>👥 Gestion des Utilisateurs</h2>
+
+            <?php if($success): ?>
+                <div class="alert alert-success"><?php echo $success; ?></div>
+            <?php endif; ?>
+            <?php if($error): ?>
+                <div class="alert alert-error"><?php echo $error; ?></div>
+            <?php endif; ?>
+
+            <div class="form-container" style="max-width: 700px; margin-bottom: 30px; padding: 20px; background: #fff; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+                <h3>➕ Ajouter un nouvel administrateur</h3>
+                <form action="manage_users.php" method="POST" style="display: grid; gap: 12px;">
+                    <input type="hidden" name="action" value="add_user">
+                    <input type="text" name="nom" placeholder="Nom complet" required>
+                    <input type="email" name="email" placeholder="Adresse e-mail" required>
+                    <input type="password" name="password" placeholder="Mot de passe" required>
+                    <label style="display: flex; align-items: center; gap: 10px;">
+                        <input type="radio" name="role" value="Admin" checked>
+                        Administrateur
+                    </label>
+                    <button type="submit" class="btn btn-success">Créer un administrateur</button>
+                </form>
+            </div>
 
             <?php if($result && $result->num_rows > 0): ?>
                 <table>
