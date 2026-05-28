@@ -1,0 +1,29 @@
+2026-05-28 04:12:58 | approve | idemprunt=52 | idlivre=27 | before=4 | after=3 | active=0 | affected_emprunt_update=1 | qty_update_result=ok
+2026-05-28 04:13:53 | approve | idemprunt=53 | idlivre=28 | before=6 | after=5 | active=0 | affected_emprunt_update=1 | qty_update_result=ok
+2026-05-28 04:25:18 | approve | idemprunt=54 | idlivre=26 | before=8 | after=7 | active=0 | affected_emprunt_update=1 | qty_update_result=ok
+2026-05-28 04:33:43 | approve | idemprunt=55 | idlivre=27 | before=3 | after=2 | active=0 | affected_emprunt_update=1 | qty_update_result=ok
+2026-05-28 04:33:46 | approve | idemprunt=56 | idlivre=28 | before=5 | after=4 | active=0 | affected_emprunt_update=1 | qty_update_result=ok
+2026-05-28 04:49:33 | approve_committed | idemprunt=57 | idlivre=26 | total_before=7 | active_before=0
+2026-05-28 04:49:36 | approve_committed | idemprunt=58 | idlivre=29 | total_before=5 | active_before=0
+2026-05-28 05:01:01 | approve_committed | idemprunt=59 | idlivre=27 | total_before=2 | active_before=0
+2026-05-28 05:01:06 | approve_committed | idemprunt=60 | idlivre=28 | total_before=4 | active_before=0
+2026-05-28 05:27:33 | approve_committed | idemprunt=61 | idlivre=26 | before_qty=6
+2026-05-28 05:33:29 | approve_committed | idemprunt=62 | idlivre=27 | before_qty=9
+2026-05-28 05:33:32 | approve_committed | idemprunt=63 | idlivre=29 | before_qty=4
+2026-05-28 05:33:35 | approve_committed | idemprunt=64 | idlivre=32 | before_qty=3
+2026-05-28 05:33:38 | approve_committed | idemprunt=65 | idlivre=40 | before_qty=8
+2026-05-28 05:33:41 | approve_committed | idemprunt=66 | idlivre=35 | before_qty=26
+2026-05-28 05:45:11 | approve_committed | idemprunt=67 | idlivre=27 | before_qty=8
+2026-05-28 05:45:14 | approve_committed | idemprunt=68 | idlivre=25 | before_qty=6
+2026-05-28 05:45:18 | approve_committed | idemprunt=69 | idlivre=28 | before_qty=5
+2026-05-28 05:45:21 | approve_committed | idemprunt=70 | idlivre=30 | before_qty=6
+2026-05-28 05:45:23 | approve_committed | idemprunt=71 | idlivre=32 | before_qty=2
+2026-05-28 05:50:52 | approve_committed | idemprunt=72 | idlivre=27 | before_qty=7
+2026-05-28 05:50:55 | approve_committed | idemprunt=73 | idlivre=28 | before_qty=4
+2026-05-28 05:59:14 | approve_committed | idemprunt=74 | idlivre=28 | before_qty=3
+2026-05-28 06:04:45 | approve_committed | idemprunt=75 | idlivre=26 | before_qty=5
+2026-05-28 06:26:19 | approve_committed | idemprunt=76 | idlivre=26 | before_qty=4
+2026-05-28 06:26:22 | approve_committed | idemprunt=77 | idlivre=25 | before_qty=5
+2026-05-28 06:26:25 | approve_committed | idemprunt=78 | idlivre=35 | before_qty=25
+2026-05-28 06:26:27 | approve_committed | idemprunt=79 | idlivre=37 | before_qty=5
+2026-05-28 06:26:31 | approve_committed | idemprunt=80 | idlivre=27 | before_qty=6

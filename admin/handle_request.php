@@ -32,17 +32,40 @@ $request = mysqli_fetch_assoc($result);
 
 if($action === 'approve'){
     if($request['quantite'] <= 0){
-        echo "Impossible de valider : aucune copie disponible pour le livre demandé.";
+        header("Location: requests.php?error=nostock");
         exit();
     }
 
-    $sqlUpdate = "UPDATE emprunt SET status='emprunté' WHERE idemprunt='$idemprunt'";
+    $bookId = $request['idlivre'];
+    $beforeQty = intval($request['quantite']);
+
+    mysqli_begin_transaction($conn);
+
+    $sqlUpdate = "UPDATE emprunt SET status='emprunté' WHERE idemprunt='$idemprunt' AND status='en attente'";
     $resultUpdate = mysqli_query($conn, $sqlUpdate);
-    if($resultUpdate){
-        mysqli_query($conn, "UPDATE livre SET quantite = quantite - 1 WHERE idlivre='{$request['idlivre']}'");
+
+    if(!$resultUpdate || $conn->affected_rows === 0){
+        mysqli_rollback($conn);
+        $logLine = date('Y-m-d H:i:s') . " | approve_failed_update | idemprunt=$idemprunt | idlivre=$bookId | before_qty={$beforeQty}\n";
+        @file_put_contents(__DIR__ . '/stock_changes.log', $logLine, FILE_APPEND);
+        header("Location: requests.php?error=updatefail");
+        exit();
     }
+
+    $qtyUpdate = mysqli_query($conn, "UPDATE livre SET quantite = quantite - 1 WHERE idlivre='$bookId' AND quantite > 0");
+    if(!$qtyUpdate || $conn->affected_rows === 0){
+        mysqli_rollback($conn);
+        $logLine = date('Y-m-d H:i:s') . " | approve_failed_no_stock_to_decrement | idemprunt=$idemprunt | idlivre=$bookId | before_qty={$beforeQty}\n";
+        @file_put_contents(__DIR__ . '/stock_changes.log', $logLine, FILE_APPEND);
+        header("Location: requests.php?error=nostock");
+        exit();
+    }
+
+    mysqli_commit($conn);
+    $logLine = date('Y-m-d H:i:s') . " | approve_committed | idemprunt=$idemprunt | idlivre=$bookId | before_qty={$beforeQty}\n";
+    @file_put_contents(__DIR__ . '/stock_changes.log', $logLine, FILE_APPEND);
 } elseif($action === 'deny'){
-    mysqli_query($conn, "DELETE FROM emprunt WHERE idemprunt='$idemprunt'");
+    mysqli_query($conn, "DELETE FROM emprunt WHERE idemprunt='$idemprunt' AND status='en attente'");
 }
 
 header("Location: requests.php");

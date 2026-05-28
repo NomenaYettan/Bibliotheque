@@ -51,32 +51,106 @@ if($_SERVER['REQUEST_METHOD'] === 'POST'){
     if($status === 'rendu' && $dateretour === ''){
         $error = "Veuillez indiquer la date de retour.";
     } else {
-        $currentStatus = $transaction['status'];
+        $currentStatus = trim(strtolower($transaction['status']));
         $bookId = $transaction['idlivre'];
 
-        if($currentStatus !== $status){
-            if($currentStatus === 'emprunté' && $status === 'rendu'){
-                mysqli_query($conn, "UPDATE livre SET quantite = quantite + 1 WHERE idlivre='$bookId'");
-            } elseif($currentStatus === 'rendu' && $status === 'emprunté'){
-                $stockCheck = mysqli_query($conn, "SELECT quantite FROM livre WHERE idlivre='$bookId'");
-                $book = mysqli_fetch_assoc($stockCheck);
-                if($book['quantite'] < 1){
-                    $error = "Impossible de réactiver l'emprunt : le livre n'est pas disponible.";
-                } else {
-                    mysqli_query($conn, "UPDATE livre SET quantite = quantite - 1 WHERE idlivre='$bookId'");
-                }
-            }
+        if($currentStatus === 'en attente' && $status === 'rendu'){
+            $error = "Impossible de marquer une demande en attente comme rendu. Veuillez d'abord approuver ou refuser la demande.";
         }
 
         if(!$error){
             $dateretourValue = $status === 'rendu' ? "'$dateretour'" : "NULL";
+
+            // Pré-vérifications : lire le nombre d'emprunts actifs et la quantité du livre AVANT de modifier la transaction
+            $activeBefore = null;
+            $beforeQty = null;
+            if($currentStatus === 'emprunté' || ($currentStatus === 'en attente' && $status === 'emprunté')){
+                $activeResBefore = mysqli_query($conn, "SELECT COUNT(*) AS active FROM emprunt WHERE idlivre='$bookId' AND LOWER(TRIM(status)) LIKE 'emprunt%'");
+                if($activeResBefore) $activeBefore = intval(mysqli_fetch_assoc($activeResBefore)['active']);
+
+                $beforeQtyRes = mysqli_query($conn, "SELECT quantite FROM livre WHERE idlivre='$bookId'");
+                $beforeQty = ($beforeQtyRes && mysqli_num_rows($beforeQtyRes)>0) ? intval(mysqli_fetch_assoc($beforeQtyRes)['quantite']) : null;
+            }
+
+            mysqli_begin_transaction($conn);
+
             $sqlUpdate = "UPDATE emprunt SET status='$status', dateretour=$dateretourValue WHERE idemprunt='$idemprunt'";
             $updateResult = mysqli_query($conn, $sqlUpdate);
-            if($updateResult){
-                header("Location: view_transaction.php");
-                exit();
+
+            if(!$updateResult || $conn->affected_rows === 0){
+                mysqli_rollback($conn);
+                if(!$updateResult){
+                    $error = "Erreur lors de la mise à jour : " . $conn->error;
+                } else {
+                    $error = "La transaction a peut-être déjà été modifiée. Veuillez rafraîchir la page.";
+                }
             } else {
-                $error = "Erreur lors de la mise à jour : " . $conn->error;
+                if($currentStatus === 'emprunté' && $status === 'rendu'){
+                    // Incrémenter la quantité du livre lors du retour
+                    $qtyResult = mysqli_query($conn, "UPDATE livre SET quantite = quantite + 1 WHERE idlivre='$bookId'");
+                    if(!$qtyResult){
+                        mysqli_rollback($conn);
+                        $error = "Erreur lors de la mise à jour du stock : " . $conn->error;
+                    } else {
+                        $afterQty = null;
+                        $afterQtyRes = mysqli_query($conn, "SELECT quantite FROM livre WHERE idlivre='$bookId'");
+                        if($afterQtyRes && mysqli_num_rows($afterQtyRes)>0) $afterQty = intval(mysqli_fetch_assoc($afterQtyRes)['quantite']);
+                        $logLine = date('Y-m-d H:i:s') . " | return_committed | idemprunt=$idemprunt | idlivre=$bookId | before={$beforeQty} | after={$afterQty} | active_before={$activeBefore}\n";
+                        @file_put_contents(__DIR__ . '/stock_changes.log', $logLine, FILE_APPEND);
+                    }
+                } elseif($currentStatus === 'rendu' && $status === 'emprunté'){
+                    // Pour réactiver un emprunt, vérifier la disponibilité avant de décrémenter la quantité
+                    $stockCheck = mysqli_query($conn, "SELECT quantite FROM livre WHERE idlivre='$bookId'");
+                    $book = ($stockCheck && mysqli_num_rows($stockCheck) > 0) ? mysqli_fetch_assoc($stockCheck) : null;
+                    $availableQty = ($book) ? intval($book['quantite']) : null;
+
+                    if($availableQty !== null && $availableQty <= 0){
+                        mysqli_rollback($conn);
+                        $error = "Impossible de réactiver l'emprunt : pas de copies disponibles.";
+                        $logLine = date('Y-m-d H:i:s') . " | reactivate_denied | idemprunt=$idemprunt | idlivre=$bookId | available_qty={$availableQty}\n";
+                        @file_put_contents(__DIR__ . '/stock_changes.log', $logLine, FILE_APPEND);
+                    } else {
+                        $qtyResult = mysqli_query($conn, "UPDATE livre SET quantite = quantite - 1 WHERE idlivre='$bookId' AND quantite > 0");
+                        if(!$qtyResult || $conn->affected_rows === 0){
+                            mysqli_rollback($conn);
+                            $error = "Impossible de réactiver l'emprunt : pas de copies disponibles pour décrémenter.";
+                            $logLine = date('Y-m-d H:i:s') . " | reactivate_failed_decrement | idemprunt=$idemprunt | idlivre=$bookId | available_qty={$availableQty}\n";
+                            @file_put_contents(__DIR__ . '/stock_changes.log', $logLine, FILE_APPEND);
+                        } else {
+                            $logLine = date('Y-m-d H:i:s') . " | reactivate_committed | idemprunt=$idemprunt | idlivre=$bookId | available_qty_before={$availableQty}\n";
+                            @file_put_contents(__DIR__ . '/stock_changes.log', $logLine, FILE_APPEND);
+                        }
+                    }
+                } elseif($currentStatus === 'en attente' && $status === 'emprunté'){
+                    // Pour l'approbation depuis 'en attente', vérifier la disponibilité avant de décrémenter la quantité
+                    $stockCheck = mysqli_query($conn, "SELECT quantite FROM livre WHERE idlivre='$bookId'");
+                    $book = ($stockCheck && mysqli_num_rows($stockCheck) > 0) ? mysqli_fetch_assoc($stockCheck) : null;
+                    $availableQty = ($book) ? intval($book['quantite']) : null;
+
+                    if($availableQty !== null && $availableQty <= 0){
+                        mysqli_rollback($conn);
+                        $error = "Impossible d'approuver la demande : pas de copies disponibles.";
+                        $logLine = date('Y-m-d H:i:s') . " | approve_denied | idemprunt=$idemprunt | idlivre=$bookId | available_qty={$availableQty}\n";
+                        @file_put_contents(__DIR__ . '/stock_changes.log', $logLine, FILE_APPEND);
+                    } else {
+                        $qtyResult = mysqli_query($conn, "UPDATE livre SET quantite = quantite - 1 WHERE idlivre='$bookId' AND quantite > 0");
+                        if(!$qtyResult || $conn->affected_rows === 0){
+                            mysqli_rollback($conn);
+                            $error = "Impossible d'approuver la demande : pas de copies disponibles pour décrémenter.";
+                            $logLine = date('Y-m-d H:i:s') . " | approve_failed_decrement | idemprunt=$idemprunt | idlivre=$bookId | available_qty={$availableQty}\n";
+                            @file_put_contents(__DIR__ . '/stock_changes.log', $logLine, FILE_APPEND);
+                        } else {
+                            $logLine = date('Y-m-d H:i:s') . " | approve_committed | idemprunt=$idemprunt | idlivre=$bookId | available_qty_before={$availableQty}\n";
+                            @file_put_contents(__DIR__ . '/stock_changes.log', $logLine, FILE_APPEND);
+                        }
+                    }
+                }
+
+                if(!$error){
+                    mysqli_commit($conn);
+                    header("Location: view_transaction.php");
+                    exit();
+                }
             }
         }
     }
@@ -139,8 +213,8 @@ if($_SERVER['REQUEST_METHOD'] === 'POST'){
                     <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px;">
                         <button type="submit" class="btn btn-primary">Mettre à jour</button>
                         <a href="view_transaction.php" class="btn btn-secondary">Annuler</a>
-                        <?php if($transaction['status'] === 'emprunté'): ?>
-                            <button type="button" class="btn btn-danger" disabled style="opacity: 0.65; cursor: not-allowed;">Supprimer la transaction</button>
+                        <?php if($transaction['status'] !== 'rendu'): ?>
+                            <button type="button" class="btn btn-danger" disabled style="opacity: 0.65; cursor: not-allowed;">Supprimer (seulement si rendu)</button>
                         <?php else: ?>
                             <a href="delete_transaction.php?idemprunt=<?php echo urlencode($idemprunt); ?>" class="btn btn-danger" onclick="return confirm('Êtes-vous sûr de vouloir supprimer cette transaction ? Cette action est définitive.');">Supprimer la transaction</a>
                         <?php endif; ?>

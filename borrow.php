@@ -13,42 +13,65 @@ $success = "";
 if(isset($_GET['idlivre'])){
     $idlivre = $_GET['idlivre'];
     $user_id = $_SESSION['id'];
-    
-    // Vérifier que le livre existe et qu'il y a des copies disponibles
-    $sql_check = "SELECT quantite FROM livre WHERE idlivre='$idlivre'";
-    $result_check = mysqli_query($conn, $sql_check);
-    
-    if($result_check && $result_check->num_rows > 0){
-        $book = mysqli_fetch_assoc($result_check);
-        if($book['quantite'] > 0){
-            // Vérifier le nombre de demandes et d'emprunts déjà en cours pour ce livre
-            $sql_pending = "SELECT COUNT(*) as total FROM emprunt WHERE idlivre='$idlivre' AND status IN ('emprunté','en attente')";
-            $result_pending = mysqli_query($conn, $sql_pending);
-            $pending = mysqli_fetch_assoc($result_pending);
 
-            if($pending['total'] >= $book['quantite']){
-                $error = "Toutes les copies de ce livre sont déjà empruntées ou en attente d'approbation.";
-            } else {
-                // Calculer la date de retour prévue (10 jours après la date de demande)
-                $expectedReturn = date('Y-m-d', strtotime('+10 days'));
+    // Vérifier les emprunts et demandes existants de l'utilisateur
+    $sql_active = "SELECT COUNT(*) as total FROM emprunt WHERE id='$user_id' AND LOWER(TRIM(status)) LIKE 'emprunt%'";
+    $result_active = mysqli_query($conn, $sql_active);
+    $active = ($result_active && $result_active->num_rows > 0) ? intval(mysqli_fetch_assoc($result_active)['total']) : 0;
 
-                // Insérer la demande sans modifier la quantité du livre
-                $sql = "INSERT INTO emprunt (id, idlivre, dateemprunt, dateretour, status) VALUES ('$user_id','$idlivre',CURDATE(),'$expectedReturn','en attente')";
-                $result = mysqli_query($conn, $sql);
+    $sql_pending = "SELECT COUNT(*) as total FROM emprunt WHERE id='$user_id' AND (LOWER(TRIM(status)) LIKE 'en attente%' OR status='' OR status IS NULL)";
+    $result_pending = mysqli_query($conn, $sql_pending);
+    $pending = ($result_pending && $result_pending->num_rows > 0) ? intval(mysqli_fetch_assoc($result_pending)['total']) : 0;
 
-                if($result){
-                    $success = "Demande d'emprunt envoyée. L'administrateur doit encore la confirmer.";
+    $sql_pending_same = "SELECT COUNT(*) as total FROM emprunt WHERE id='$user_id' AND idlivre='$idlivre' AND (LOWER(TRIM(status)) LIKE 'en attente%' OR status='' OR status IS NULL)";
+    $result_pending_same = mysqli_query($conn, $sql_pending_same);
+    $pendingSame = ($result_pending_same && $result_pending_same->num_rows > 0) ? intval(mysqli_fetch_assoc($result_pending_same)['total']) : 0;
+
+    $totalRequests = $active + $pending;
+
+    if($active > 0){
+        $error = "Vous avez encore un emprunt non rendu. Retournez-le avant de faire une nouvelle demande.";
+    } elseif($totalRequests >= 5){
+        $error = "Vous ne pouvez pas demander plus de 5 livres en même temps.";
+    } elseif($pendingSame > 0){
+        $error = "Vous avez déjà demandé ce livre.";
+    } else {
+        // Vérifier que le livre existe et qu'il y a des copies disponibles
+        $sql_check = "SELECT quantite FROM livre WHERE idlivre='$idlivre'";
+        $result_check = mysqli_query($conn, $sql_check);
+
+        if($result_check && $result_check->num_rows > 0){
+            $book = mysqli_fetch_assoc($result_check);
+            if($book['quantite'] > 0){
+                // Vérifier le nombre de demandes et d'emprunts déjà en cours pour ce livre
+                $sql_pending_book = "SELECT COUNT(*) as total FROM emprunt WHERE idlivre='$idlivre' AND status IN ('emprunté','en attente')";
+                $result_pending_book = mysqli_query($conn, $sql_pending_book);
+                $pendingBook = ($result_pending_book && $result_pending_book->num_rows > 0) ? intval(mysqli_fetch_assoc($result_pending_book)['total']) : 0;
+
+                if($pendingBook >= $book['quantite']){
+                    $error = "Toutes les copies de ce livre sont déjà empruntées ou en attente d'approbation.";
                 } else {
-                    $error = "Erreur lors de la demande d'emprunt: " . $conn->error;
+                    // Calculer la date de retour prévue (10 jours après la date de demande)
+                    $expectedReturn = date('Y-m-d', strtotime('+10 days'));
+
+                    // Insérer la demande sans modifier la quantité du livre
+                    $sql = "INSERT INTO emprunt (id, idlivre, dateemprunt, dateretour, status) VALUES ('$user_id','$idlivre',CURDATE(),'$expectedReturn','en attente')";
+                    $result = mysqli_query($conn, $sql);
+
+                    if($result){
+                        $success = "Demande d'emprunt envoyée. L'administrateur doit encore la confirmer.";
+                    } else {
+                        $error = "Erreur lors de la demande d'emprunt: " . $conn->error;
+                    }
                 }
+            }
+            else{
+                $error = "Ce livre n'est pas disponible pour le moment.";
             }
         }
         else{
-            $error = "Ce livre n'est pas disponible pour le moment.";
+            $error = "Livre non trouvé.";
         }
-    }
-    else{
-        $error = "Livre non trouvé.";
     }
 }
 ?>

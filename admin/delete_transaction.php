@@ -25,8 +25,8 @@ if(!$statusCheck || $statusCheck->num_rows === 0){
 }
 
 $row = mysqli_fetch_assoc($statusCheck);
-if($row['status'] === 'emprunté'){
-    echo "Impossible de supprimer cette transaction tant que le livre est encore emprunté. Retournez d'abord le livre.";
+if($row['status'] !== 'rendu'){
+    echo "Impossible de supprimer cette transaction. Seules les transactions avec le statut 'rendu' peuvent être supprimées.";
     exit();
 }
 

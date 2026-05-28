@@ -10,13 +10,36 @@ if(!isset($_SESSION['id'])){
 $error = "";
 $success = "";
 
-// Désactivation du retour direct par les utilisateurs : seul l'Admin peut marquer un emprunt comme retourné
-if($_GET && isset($_GET['idlivre'])){
+// Traiter le retour uniquement si l'administrateur soumet une transaction valide
+if($_GET && isset($_GET['idemprunt'])){
+    $idemprunt = mysqli_real_escape_string($conn, $_GET['idemprunt']);
     if(!isset($_SESSION['role']) || $_SESSION['role'] !== "Admin"){
         $error = "Action non autorisée : seul l'administrateur peut marquer un livre comme retourné.";
     } else {
-        // Pour les administrateurs, la gestion des retours doit se faire via le panneau d'administration
-        $error = "Utilisez le panneau d'administration pour marquer un emprunt comme retourné.";
+        $sqlReturn = "SELECT e.idemprunt, e.idlivre, e.status, l.titre FROM emprunt e JOIN livre l ON e.idlivre = l.idlivre WHERE e.idemprunt='$idemprunt' AND e.status='emprunté'";
+        $returnResult = mysqli_query($conn, $sqlReturn);
+        if($returnResult && $returnResult->num_rows > 0){
+            $returnRow = mysqli_fetch_assoc($returnResult);
+            $bookId = $returnRow['idlivre'];
+            mysqli_begin_transaction($conn);
+            $sqlUpdate = "UPDATE emprunt SET status='rendu', dateretour=CURDATE() WHERE idemprunt='$idemprunt' AND status='emprunté'";
+            $updateResult = mysqli_query($conn, $sqlUpdate);
+            if($updateResult && $conn->affected_rows > 0){
+                $qtyResult = mysqli_query($conn, "UPDATE livre SET quantite = quantite + 1 WHERE idlivre='$bookId'");
+                if($qtyResult && $conn->affected_rows > 0){
+                    mysqli_commit($conn);
+                    $success = "Le livre a été marqué comme rendu et la quantité a été mise à jour.";
+                } else {
+                    mysqli_rollback($conn);
+                    $error = "Erreur lors de la mise à jour du stock.";
+                }
+            } else {
+                mysqli_rollback($conn);
+                $error = "Impossible de marquer ce livre comme rendu.";
+            }
+        } else {
+            $error = "Aucun emprunt actif trouvé pour ce retour.";
+        }
     }
 }
 
@@ -69,7 +92,7 @@ $result = mysqli_query($conn, $sql);
                         <p><strong>Statut:</strong> <span style="color: #27ae60; font-weight: bold;">En cours</span></p>
                         <div class="book-actions">
                             <?php if(isset($_SESSION['role']) && $_SESSION['role'] === 'Admin'): ?>
-                                <a href="return.php?idlivre=<?php echo $row['idlivre']; ?>" class="btn btn-danger" onclick="return confirm('Confirmer le retour de ce livre?');">↩️ Retourner ce livre</a>
+                                <a href="return.php?idemprunt=<?php echo $row['idemprunt']; ?>" class="btn btn-danger" onclick="return confirm('Confirmer le retour de ce livre?');">↩️ Retourner ce livre</a>
                             <?php else: ?>
                                 <span style="color: #7f8c8d;">En attente de retour (contacter l'administrateur)</span>
                             <?php endif; ?>

@@ -67,7 +67,7 @@ $result = mysqli_query($conn, $sql);
                             <td><?php echo htmlspecialchars($row['auteur']); ?></td>
                             <td><?php echo htmlspecialchars($row['isbn']); ?></td>
                             <td><img src="../image/<?php echo htmlspecialchars($row['image']); ?>" width="50" style="border-radius: 4px;"></td>
-                            <td style="text-align: center; font-weight: bold; color: #27ae60;"><?php echo $row['quantite']; ?></td>
+                            <td style="text-align: center; font-weight: bold; color: #27ae60;"><?php echo intval($row['quantite']); ?></td>
                             <td>
                                 <a href="update_book.php?idlivre=<?php echo $row['idlivre']; ?>" class="btn btn-warning" style="padding: 6px 12px; font-size: 12px;">✏️ Modifier</a>
                                 <a href="delete_book.php?idlivre=<?php echo $row['idlivre']; ?>" class="btn btn-danger" style="padding: 6px 12px; font-size: 12px;" onclick="return confirm('Confirmer la suppression?');">🗑️ Supprimer</a>

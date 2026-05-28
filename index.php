@@ -6,7 +6,38 @@ $result = mysqli_query($conn,$sql);
 if(!$result){
     echo "error!: {$result->error}";
 }
+
+$canBorrow = true;
+$borrowRestriction = '';
+$borrowSummary = '';
+$pendingBooks = [];
+if(isset($_SESSION['id']) && isset($_SESSION['role']) && $_SESSION['role'] === "User"){
+    $user_id = $_SESSION['id'];
+    $activeRes = mysqli_query($conn, "SELECT COUNT(*) AS total FROM emprunt WHERE id='$user_id' AND LOWER(TRIM(status)) LIKE 'emprunt%'");
+    $activeCount = ($activeRes && $activeRes->num_rows > 0) ? intval(mysqli_fetch_assoc($activeRes)['total']) : 0;
+    $pendingRes = mysqli_query($conn, "SELECT COUNT(*) AS total FROM emprunt WHERE id='$user_id' AND (LOWER(TRIM(status)) LIKE 'en attente%' OR status='' OR status IS NULL)");
+    $pendingCount = ($pendingRes && $pendingRes->num_rows > 0) ? intval(mysqli_fetch_assoc($pendingRes)['total']) : 0;
+
+    $pendingListRes = mysqli_query($conn, "SELECT idlivre FROM emprunt WHERE id='$user_id' AND (LOWER(TRIM(status)) LIKE 'en attente%' OR status='' OR status IS NULL)");
+    if($pendingListRes){
+        while($rowPending = mysqli_fetch_assoc($pendingListRes)){
+            $pendingBooks[] = intval($rowPending['idlivre']);
+        }
+    }
+
+    $totalRequests = $activeCount + $pendingCount;
+    $borrowSummary = "Vous avez $activeCount emprunt(s) en cours et $pendingCount demande(s) en attente.";
+
+    if($activeCount > 0){
+        $canBorrow = false;
+        $borrowRestriction = "Vous avez encore un emprunt non rendu. Retournez-le avant de demander un nouveau livre.";
+    } elseif($totalRequests >= 5){
+        $canBorrow = false;
+        $borrowRestriction = "Vous avez atteint la limite de 5 livres demandés ou empruntés.";
+    }
+}
 ?>
+
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -33,6 +64,16 @@ if(!$result){
 
     <div class="container">
         <h2 style="margin-bottom: 20px;">📚 Catalogue de Livres</h2>
+        <?php if($borrowSummary): ?>
+            <div class="alert alert-info" style="margin-bottom: 20px;">
+                <?php echo htmlspecialchars($borrowSummary); ?>
+                <?php if(!$canBorrow): ?>
+                    <br><?php echo htmlspecialchars($borrowRestriction); ?>
+                <?php else: ?>
+                    <br>Vous pouvez demander jusqu'à 5 livres en même temps.
+                <?php endif; ?>
+            </div>
+        <?php endif; ?>
         <div class="books-grid">
             <?php 
             while($row = mysqli_fetch_assoc($result)){
@@ -41,10 +82,10 @@ if(!$result){
                 $sql_emprunts = "SELECT COUNT(*) as nb_emprunts FROM emprunt WHERE idlivre='$idlivre' AND status='emprunté'";
                 $result_emprunts = mysqli_query($conn, $sql_emprunts);
                 $emprunts = mysqli_fetch_assoc($result_emprunts);
-                $nb_emprunts = $emprunts['nb_emprunts'];
-                
-                // Quantité disponible (toujours >= 0)
-                $quantite_disponible = max(0, $row['quantite']);
+                $nb_emprunts = intval($emprunts['nb_emprunts']);
+
+                // Quantité disponible stockée dans la table livre
+                $quantite_disponible = max(0, intval($row['quantite']));
             ?>
                 <div class="book-card">
                     <img src="image/<?php echo htmlspecialchars($row['image']); ?>" alt="<?php echo htmlspecialchars($row['titre']); ?>">
@@ -61,7 +102,12 @@ if(!$result){
                     
                     <div class="book-actions">
                         <?php if(isset($_SESSION['id'])): ?>
-                            <?php if($quantite_disponible > 0): ?>
+                            <?php $alreadyRequested = in_array($row['idlivre'], $pendingBooks); ?>
+                            <?php if(isset($_SESSION['role']) && $_SESSION['role'] === 'User' && !$canBorrow): ?>
+                                <button class="btn btn-disabled" disabled>❌ <?php echo htmlspecialchars($borrowRestriction); ?></button>
+                            <?php elseif($alreadyRequested): ?>
+                                <button class="btn btn-disabled" disabled>❌ Vous avez déjà demandé ce livre</button>
+                            <?php elseif($quantite_disponible > 0): ?>
                                 <a href="borrow.php?idlivre=<?php echo $row['idlivre']; ?>" class="btn btn-success">📖 Emprunter</a>
                             <?php else: ?>
                                 <button class="btn btn-disabled" disabled>❌ Indisponible</button>
@@ -72,7 +118,7 @@ if(!$result){
                                 <?php endif; ?>
                             <?php endif; ?>
                             <?php if(isset($_SESSION['role']) && $_SESSION['role'] === 'Admin'): ?>
-                                <a href="return.php?idlivre=<?php echo $row['idlivre']; ?>" class="btn btn-warning">↩️ Retourner</a>
+                                <a href="admin/view_transaction.php" class="btn btn-warning">↩️ Gérer les retours</a>
                             <?php else: ?>
                                 <span style="color: #7f8c8d; font-size: 13px;">Retour uniquement via l'administrateur</span>
                             <?php endif; ?>
