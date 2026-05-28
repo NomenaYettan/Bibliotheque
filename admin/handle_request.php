@@ -17,11 +17,11 @@ if(!isset($_GET['idemprunt']) || !isset($_GET['action'])){
     exit();
 }
 
-$idemprunt = mysqli_real_escape_string($conn, $_GET['idemprunt']);
+$idemprunt = $conn->real_escape_string($_GET['idemprunt']);
 $action = $_GET['action'];
 
 $sql = "SELECT e.*, l.quantite FROM emprunt e JOIN livre l ON e.idlivre = l.idlivre WHERE e.idemprunt = '$idemprunt' AND e.status = 'en attente'";
-$result = mysqli_query($conn, $sql);
+$result = $conn->query($sql);
 
 if(!$result || $result->num_rows === 0){
     header("Location: requests.php");
@@ -39,33 +39,31 @@ if($action === 'approve'){
     $bookId = $request['idlivre'];
     $beforeQty = intval($request['quantite']);
 
-    mysqli_begin_transaction($conn);
+    $conn->begin_transaction();
 
     $sqlUpdate = "UPDATE emprunt SET status='emprunté' WHERE idemprunt='$idemprunt' AND status='en attente'";
-    $resultUpdate = mysqli_query($conn, $sqlUpdate);
+    $resultUpdate = $conn->query($sqlUpdate);
 
     if(!$resultUpdate || $conn->affected_rows === 0){
-        mysqli_rollback($conn);
+        $conn->rollback();
         $logLine = date('Y-m-d H:i:s') . " | approve_failed_update | idemprunt=$idemprunt | idlivre=$bookId | before_qty={$beforeQty}\n";
         @file_put_contents(__DIR__ . '/stock_changes.log', $logLine, FILE_APPEND);
         header("Location: requests.php?error=updatefail");
         exit();
     }
-
-    $qtyUpdate = mysqli_query($conn, "UPDATE livre SET quantite = quantite - 1 WHERE idlivre='$bookId' AND quantite > 0");
+    $qtyUpdate = $conn->query("UPDATE livre SET quantite = quantite - 1 WHERE idlivre='$bookId' AND quantite > 0");
     if(!$qtyUpdate || $conn->affected_rows === 0){
-        mysqli_rollback($conn);
+        $conn->rollback();
         $logLine = date('Y-m-d H:i:s') . " | approve_failed_no_stock_to_decrement | idemprunt=$idemprunt | idlivre=$bookId | before_qty={$beforeQty}\n";
         @file_put_contents(__DIR__ . '/stock_changes.log', $logLine, FILE_APPEND);
         header("Location: requests.php?error=nostock");
         exit();
     }
-
-    mysqli_commit($conn);
+    $conn->commit();
     $logLine = date('Y-m-d H:i:s') . " | approve_committed | idemprunt=$idemprunt | idlivre=$bookId | before_qty={$beforeQty}\n";
     @file_put_contents(__DIR__ . '/stock_changes.log', $logLine, FILE_APPEND);
 } elseif($action === 'deny'){
-    mysqli_query($conn, "DELETE FROM emprunt WHERE idemprunt='$idemprunt' AND status='en attente'");
+    $conn->query("DELETE FROM emprunt WHERE idemprunt='$idemprunt' AND status='en attente'");
 }
 
 header("Location: requests.php");

@@ -5,7 +5,7 @@ error_reporting(E_ALL);
 $server = "localhost";
 $user = "root";
 $pass = "";
-$dbname = "bibliotheque";
+$dbname = "bibliotheque1";
 $conn = new mysqli($server, $user, $pass, $dbname);
 if($conn->connect_errno){
     die("Erreur de connexion à la base de données : " . $conn->connect_error);
